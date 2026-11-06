@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}{% if client %} · {{ client }}{% endif %}</title>
+<style>
+  :root {
+    --ink: #17191c; --muted: #5d636b; --faint: #8a9099; --line: #e3e5e8; --panel: #f6f7f8;
+    --accent: #1f5f73; --pass: #2f7d4f; --fail: #b4432f; --warn: #a66a00;
+    --pass-bg: #e8f3ec; --fail-bg: #f8e9e6; --warn-bg: #fbf1dc;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink);
+         font: 15px/1.55 -apple-system, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 48px 24px 80px; }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 28px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--muted); }
+  h1 { font-size: 30px; line-height: 1.2; margin: 6px 0 4px; letter-spacing: -.01em; }
+  h2 { font-size: 20px; margin: 44px 0 6px; padding-top: 6px; }
+  h2 .num { color: var(--faint); font-weight: 500; margin-right: 6px; }
+  h3 { font-size: 15px; margin: 22px 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn); padding: 10px 14px;
+            margin: 0 0 24px; font-size: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0 8px; }
+  .kpi { background: var(--panel); border-radius: 8px; padding: 14px 16px; }
+  .kpi .v { font-size: 26px; font-weight: 650; letter-spacing: -.01em; }
+  .kpi .l { font-size: 13px; color: var(--muted); }
+  .kpi .d { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .kpi.bad .v { color: var(--fail); }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; font-size: 14px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase;
+       letter-spacing: .05em; border-bottom: 1px solid var(--ink); padding: 6px 8px; }
+  td { border-bottom: 1px solid var(--line); padding: 8px; vertical-align: top; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar { position: relative; height: 10px; background: var(--line); border-radius: 5px; min-width: 140px; margin-top: 5px; }
+  .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); }
+  .bar .ci { position: absolute; top: -3px; bottom: -3px; border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); opacity: .35; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--panel);
+         color: var(--muted); margin-right: 4px; }
+  .tag.high { background: var(--fail-bg); color: var(--fail); }
+  .tag.medium { background: var(--warn-bg); color: var(--warn); }
+  .case { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 12px 0; break-inside: avoid; }
+  .case .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .case .id { font-weight: 650; }
+  .turn { margin: 6px 0; }
+  .turn .who { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .turn .txt { background: var(--panel); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; }
+  .turn.bot .txt { background: var(--fail-bg); }
+  .turn.ref .txt { background: var(--pass-bg); }
+  .why { font-size: 13px; color: var(--muted); margin: 8px 0 0; padding-left: 18px; }
+  .delta-up { color: var(--pass); } .delta-down { color: var(--fail); }
+  .notes { border-left: 3px solid var(--accent); padding: 2px 0 2px 16px; margin: 16px 0; }
+  .notes h3:first-child { margin-top: 4px; }
+  .placeholder { color: var(--faint); font-style: italic; }
+  .kv td:first-child { color: var(--muted); width: 34%; }
+  footer { margin-top: 56px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; }
+  @media print {
+    main { padding: 0; max-width: none; } h2 { break-after: avoid; } .case, .kpi, table { break-inside: avoid; }
+    body { font-size: 12.5px; }
+  }
+  @media (max-width: 600px) { h1 { font-size: 24px; } .bar { min-width: 80px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">{% if client %}{{ client }} · {% endif %}Evaluation report</div>
+  <h1>{{ title }}</h1>
+  <div class="meta">{{ date }}{% if author %} · Prepared by {{ author }}{% endif %} · Run <code>{{ cfg.name }}</code> ({{ cfg.started_utc }} UTC)</div>
+</header>
+
+{% if cfg.judge.mode == "stub" %}
+<div class="banner"><strong>Demo grading.</strong> Judge-graded checks in this run used the offline stub, not a real model judge.
+Re-run with <code>ANTHROPIC_API_KEY</code> or <code>GEMINI_API_KEY</code> set and calibrate the judge before sharing results with a client.</div>
+{% endif %}
+
+{% set h = s.headline %}
+<h2><span class="num">1</span>Summary</h2>
+<div class="kpis">
+  <div class="kpi"><div class="v">{{ h.pct|pct }}</div><div class="l">of test cases pass reliably</div>
+    <div class="d">{{ h.k }} of {{ h.n }} · 95% CI {{ h.lo|pct }}–{{ h.hi|pct }}</div></div>
+  <div class="kpi {% if s.high_risk_fail %}bad{% endif %}"><div class="v">{{ s.high_risk_fail }}</div><div class="l">high-risk cases failing</div>
+    <div class="d">{{ s.n_failing }} failing cases in total</div></div>
+  <div class="kpi"><div class="v">{{ s.flaky|length }}</div><div class="l">inconsistent cases</div>
+    <div class="d">pass on some runs, fail on others</div></div>
+  <div class="kpi"><div class="v">{{ "%.0f"|format(s.perf.p95) }} ms</div><div class="l">p95 latency</div>
+    <div class="d">median {{ "%.0f"|format(s.perf.p50) }} ms</div></div>
+</div>
+<p class="sub">Each of the {{ h.n }} test cases was run {{ cfg.samples }} time{{ "s" if cfg.samples != 1 }} ({{ s.attempts }} responses in total).
+A case counts as passing only if every run passed every check.{% if s.errors %} {{ s.errors }} responses failed with errors from the system under test.{% endif %}
+{% if s.taxonomy %}The most serious failure type was <strong>{{ s.taxonomy[0].type|replace("_", " ") }}</strong>, affecting {{ s.taxonomy[0].cases }} case{{ "s" if s.taxonomy[0].cases != 1 }}.{% endif %}</p>
+
+<div class="notes">
+{% if notes %}
+  {% for kind, body in notes %}
+    {% if kind == "h" %}<h3>{{ body }}</h3>
+    {% elif kind == "p" %}<p>{{ body }}</p>
+    {% else %}<ul>{% for i in body %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}
+  {% endfor %}
+{% else %}
+  <h3>Findings and recommendations</h3>
+  <p class="placeholder">Add your analysis here: write a short markdown file and pass it with <code>--notes</code>.
+  Lead with what to fix first, why it matters to the business, and how you would verify the fix.</p>
+{% endif %}
+</div>
+
+{% if s.comparison %}{% set c = s.comparison %}
+<h2><span class="num">·</span>Change since baseline</h2>
+<p class="sub">Compared with run <code>{{ c.name }}</code> on the {{ c.n_common }} cases both runs share.</p>
+<div class="kpis">
+  <div class="kpi"><div class="v">{{ c.base.pct|pct }} → {{ c.cur.pct|pct }}</div><div class="l">reliable pass rate</div>
+    <div class="d {% if c.delta > 0 %}delta-up{% elif c.delta < 0 %}delta-down{% endif %}">{{ "%+.0f"|format(c.delta * 100) }} percentage points</div></div>
+  <div class="kpi"><div class="v">{{ c.fixes|length }}</div><div class="l">cases fixed</div></div>
+  <div class="kpi {% if c.regressions %}bad{% endif %}"><div class="v">{{ c.regressions|length }}</div><div class="l">new regressions</div></div>
+</div>
+{% if c.regressions %}
+<h3>Regressions (passed before, fail now)</h3>
+<table><tr><th>Case</th><th>Risk</th><th>Failure</th><th>Current response</th></tr>
+{% for r in c.regressions %}<tr><td class="mono">{{ r.id }}</td><td><span class="tag {{ r.tags.risk }}">{{ r.tags.risk }}</span></td>
+<td>{{ r.types|join(", ")|replace("_", " ") }}</td><td>{{ r.output|truncate(120) }}</td></tr>{% endfor %}</table>
+{% endif %}
+{% if c.fixes %}
+<h3>Fixed (failed before, pass now)</h3>
+<table><tr><th>Case</th><th>Risk</th><th>Previous failure</th></tr>
+{% for r in c.fixes %}<tr><td class="mono">{{ r.id }}</td><td><span class="tag {{ r.tags.risk }}">{{ r.tags.risk }}</span></td><td>{{ r.types|join(", ")|replace("_", " ") }}</td></tr>{% endfor %}</table>
+{% endif %}
+<p class="meta">Small test sets move in large steps: one case is {{ "%.0f"|format(100 / c.n_common) }} points here. Treat changes inside the confidence intervals as indicative, not proven.</p>
+{% endif %}
+
+<h2><span class="num">2</span>Results by segment</h2>
+<p class="sub">Bars show the share of cases passing reliably; the bracket is the 95% confidence interval. Wide brackets mean too few cases to be sure.</p>
+{% for key, rows in s.breakdown.items() %}
+<h3>By {{ key }}</h3>
+<table>
+<tr><th>{{ key|capitalize }}</th><th class="n">Cases</th><th class="n">Pass</th><th style="width:40%">&nbsp;</th><th class="n">95% CI</th></tr>
+{% for r in rows %}
+<tr><td>{{ r.value|replace("_", " ") }}</td><td class="n">{{ r.n }}</td><td class="n">{{ r.pct|pct }}</td>
+<td><div class="bar"><div class="fill" style="width:{{ (r.pct*100)|round(1) }}%"></div>
+<div class="ci" style="left:{{ (r.lo*100)|round(1) }}%;width:{{ ((r.hi-r.lo)*100)|round(1) }}%"></div></div></td>
+<td class="n">{{ r.lo|pct }}–{{ r.hi|pct }}</td></tr>
+{% endfor %}
+</table>
+{% endfor %}
+
+<h2><span class="num">3</span>Failure types</h2>
+<p class="sub">Every failed check is labelled with a failure type. Ordered by the highest risk level each type touches, then by the number of cases affected.</p>
+{% if s.taxonomy %}
+<table>
+<tr><th>Failure type</th><th>Worst risk</th><th class="n">Cases</th><th class="n">Failed responses</th><th>Example</th></tr>
+{% for t in s.taxonomy %}
+<tr><td><strong>{{ t.type|replace("_", " ") }}</strong></td><td><span class="tag {{ t.risk }}">{{ t.risk }}</span></td>
+<td class="n">{{ t.cases }}</td><td class="n">{{ t.attempts }}</td><td class="mono">{{ t.example }}</td></tr>
+{% endfor %}
+</table>
+{% else %}<p>No failures.</p>{% endif %}
+
+<h2><span class="num">4</span>Failing cases</h2>
+<p class="sub">{% if s.n_failing > s.worst|length %}The {{ s.worst|length }} most serious of {{ s.n_failing }} failing cases{% else %}All {{ s.n_failing }} failing cases{% endif %}, highest risk first. Each shows one failing response and the checks it failed.</p>
+{% for w in s.worst %}
+<div class="case">
+  <div class="top"><span class="id mono">{{ w.id }}</span>
+    <span>{% for k, v in w.tags.items() %}<span class="tag {{ v if k == 'risk' }}">{{ k }}: {{ v }}</span>{% endfor %}
+    <span class="tag">passed {{ w.k }}/{{ w.n }} runs</span></span></div>
+  <div class="turn"><div class="who">User</div><div class="txt">{{ w.user }}</div></div>
+  <div class="turn bot"><div class="who">Assistant</div><div class="txt">{{ w.output }}</div></div>
+  {% if w.reference %}<div class="turn ref"><div class="who">Expected</div><div class="txt">{{ w.reference }}</div></div>{% endif %}
+  <ul class="why">{% for g in w.grades %}<li><code>{{ g.grader }}</code>: {{ g.rationale }}</li>{% endfor %}</ul>
+</div>
+{% endfor %}
+
+<h2><span class="num">5</span>Consistency</h2>
+{% if s.flaky %}
+<p class="sub">These cases gave different results across identical runs. Inconsistent behaviour is often worse than consistent failure: it slips past spot checks.</p>
+{% for f in s.flaky %}
+<div class="case"><div class="top"><span class="id mono">{{ f.id }}</span><span class="tag">passed {{ f.k }}/{{ f.n }} runs</span></div>
+{% for text, count in f.variants %}<div class="turn"><div class="who">{{ count }}× response</div><div class="txt">{{ text }}</div></div>{% endfor %}</div>
+{% endfor %}
+{% else %}<p class="sub">Every case gave the same pass/fail result on all {{ cfg.samples }} runs.</p>{% endif %}
+
+<h2><span class="num">6</span>Cost and latency</h2>
+<table class="kv">
+<tr><td>Median latency</td><td class="mono">{{ "%.0f"|format(s.perf.p50) }} ms</td></tr>
+<tr><td>95th percentile latency</td><td class="mono">{{ "%.0f"|format(s.perf.p95) }} ms</td></tr>
+<tr><td>Tokens (input / output)</td><td class="mono">{{ "{:,}".format(s.perf.tokens_in) }} / {{ "{:,}".format(s.perf.tokens_out) }}</td></tr>
+<tr><td>Cost of this evaluation run</td><td class="mono">${{ "%.4f"|format(s.perf.cost_total) }}</td></tr>
+<tr><td>Estimated cost per 1,000 conversations</td><td class="mono">${{ "%.2f"|format(s.perf.cost_per_1k) }}</td></tr>
+</table>
+<p class="meta">Cost uses token counts reported by the system under test and the per-token prices set in its adapter.</p>
+
+<h2><span class="num">7</span>Method</h2>
+<table class="kv">
+<tr><td>Test set</td><td><code>{{ cfg.cases_file }}</code> · {{ cfg.n_cases }} cases</td></tr>
+<tr><td>Runs per case</td><td>{{ cfg.samples }}</td></tr>
+<tr><td>System under test</td><td class="mono">{% for k, v in cfg.target.items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}</td></tr>
+<tr><td>Checks used (per run)</td><td>{% for g, n in s.grader_counts.most_common() %}<code>{{ g }}</code> ×{{ n }}{% if not loop.last %}, {% endif %}{% endfor %}</td></tr>
+<tr><td>Model judge</td><td class="mono">{{ cfg.judge.model }}, temperature {{ "model default" if cfg.judge.temperature is none else cfg.judge.temperature }}, pass at ≥{{ cfg.judge.pass_threshold }}/5</td></tr>
+<tr><td>Rule vs judge disagreement</td><td>{{ s.agreement.disagree }} of {{ s.agreement.both }} responses checked by both</td></tr>
+<tr><td>Code version</td><td class="mono">{{ cfg.git or "not under version control" }}</td></tr>
+</table>
+<p class="meta">Rule-based checks (text matching, JSON validation, PII patterns) are deterministic. Model-judged checks score each response
+against a written rubric and give their reasoning before the score. Confidence intervals are 95% Wilson intervals over cases, not runs,
+because runs of the same case are not independent. All raw responses and grades are saved with the run and can be traced case by case.</p>
+
+<footer>Generated by evalkit · {{ s.attempts }} responses · run {{ cfg.started_utc }}–{{ cfg.finished_utc }} UTC</footer>
+</main>
+</body>
+</html>
